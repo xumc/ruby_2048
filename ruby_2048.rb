@@ -1,9 +1,20 @@
+class Object
+	def invoke(need, method)
+		if need
+			self.send(method) 
+		else
+			self
+		end
+	end
+end
+
 class R2048
 	attr_reader :chessboard
 	LEFT = "l"
 	RIGHT = "r"
 	TOP = "t"
 	BOTTOM = "b"
+	EXIT = "e"
 
 	def initialize
 	    @chessboard = Array.new(4){|x| Array.new(4){|y| 0}}
@@ -23,68 +34,31 @@ class R2048
 
 	end
 
-	def check_and_merge(direction)#transpose?, reverse?)
-		case direction
-		when LEFT
-			@chessboard = @chessboard.map do |row|
-			  set_jump_step(row)
-			end
-		when RIGHT
-			@chessboard = @chessboard.map do |row|
-			  set_jump_step(row.reverse).reverse
-			end
-		when TOP
-			@chessboard = @chessboard.transpose.map do |row|
-			  set_jump_step(row)
-			end.transpose
-		when BOTTOM
-			@chessboard = @chessboard.transpose.map do |row|
-			  set_jump_step(row.reverse).reverse
-			end.transpose
+	def check_and_merge(transpose, reverse)
+		moved = false
+		temp_chessboard = @chessboard.invoke(transpose, :transpose).map do |row|
+			reversed_row = set_jump_step(row.invoke(reverse, :reverse)).invoke(reverse, :reverse)
+			moved = true if reversed_row != row.invoke(reverse, :reverse)
+			reversed_row
+		end.invoke(transpose, :transpose)
+
+		if moved
+			@chessboard = temp_chessboard 
+			true
 		else
-			puts "input error"
+			false
 		end
 	end
 
-	def generate_new_num(direction)
+	def generate_new_num(transpose, pos)
 		ungenerated = true
-		case direction
-		when LEFT
-			@chessboard.map! do |row|
-				if ungenerated && row[3] == 0
-					ungenerated = false
-					row[3] = [2, 4][rand(2)]
-				end
-				row
+		@chessboard = @chessboard.invoke(transpose, :transpose).map do |row|
+			if ungenerated && row[pos] == 0
+				ungenerated = false
+				row[pos] = [2, 4][rand(2)]
 			end
-		when RIGHT
-			@chessboard.map! do |row|
-				if ungenerated && row[0] == 0
-					ungenerated = false
-					row[0] = [2, 4][rand(2)]
-				end
-				row
-			end
-		when TOP
-			@chessboard = @chessboard.transpose.map! do |row|
-				if ungenerated && row[3] == 0
-					ungenerated = false
-					row[3] = [2, 4][rand(2)]
-				end
-				row
-			end.transpose
-		when BOTTOM
-			@chessboard = @chessboard.transpose.map! do |row|
-				if ungenerated && row[0] == 0
-					ungenerated = false
-					row[0] = [2, 4][rand(2)]
-				end
-				row
-			end.transpose
-		else
-			puts "input error"
-		end
-
+			row
+		end.invoke(transpose, :transpose)
 		!ungenerated
 	end
 
@@ -101,6 +75,7 @@ class R2048
 	end
 
 	def display
+	  puts "==========================================================="
       @chessboard.each_with_index do |c, row|
       	puts "#{c[0]}	#{c[1]}	#{c[2]}	#{c[3]}"
       	puts
@@ -116,11 +91,34 @@ class R2048
 		key = nil
 		until key == "e\n"
 			key = gets
-			return if key == "e\n"
 			key.gsub!("\n", "")
-			check_and_merge(key)
+			return if key == EXIT
 
-			if generate_new_num(key)
+			if ![LEFT, RIGHT, TOP, BOTTOM].include? key
+				puts "input error" 
+				next
+			end
+
+			generate = case key
+			when LEFT
+				if check_and_merge(false, false)
+					generate_new_num(false, 3)
+				end
+			when RIGHT
+				if check_and_merge(false, true)
+					generate_new_num(false, 0)
+				end
+			when TOP
+				if check_and_merge(true, false)
+					generate_new_num(true, 3)
+				end
+			when BOTTOM
+				if check_and_merge(true, true)
+					generate_new_num(true, 0)
+				end
+			end
+
+			if generate == nil || generate
 			  display
 			else
 			  failure_display
