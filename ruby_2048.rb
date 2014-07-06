@@ -18,6 +18,7 @@ class R2048
 
 	def initialize
 	    @chessboard = Array.new(4){|x| Array.new(4){|y| 0}}
+	    @init_moved = false
 		1.upto(2){|i| generate_init_num}
 	end
 
@@ -46,17 +47,29 @@ class R2048
 			@chessboard = temp_chessboard 
 			true
 		else
-			false
+			if !@init_moved
+				@init_moved = true
+				true
+			else
+			 	false
+			end
 		end
 	end
 
 	def generate_new_num(transpose, pos)
 		ungenerated = true
+
+		right_positions = []
+		@chessboard.invoke(transpose, :transpose).each_with_index{|row, i| right_positions << i if row[pos] == 0}
+		right_position = right_positions[rand(right_positions.count)]
+
+		row_index = 0
 		@chessboard = @chessboard.invoke(transpose, :transpose).map do |row|
-			if ungenerated && row[pos] == 0
+			if ungenerated && row_index == right_position
 				ungenerated = false
 				row[pos] = [2, 4][rand(2)]
 			end
+			row_index += 1
 			row
 		end.invoke(transpose, :transpose)
 		!ungenerated
@@ -103,18 +116,26 @@ class R2048
 			when LEFT
 				if check_and_merge(false, false)
 					generate_new_num(false, 3)
+				else
+					nil
 				end
 			when RIGHT
 				if check_and_merge(false, true)
 					generate_new_num(false, 0)
+				else
+					nil
 				end
 			when TOP
 				if check_and_merge(true, false)
 					generate_new_num(true, 3)
+				else
+					nil
 				end
 			when BOTTOM
 				if check_and_merge(true, true)
 					generate_new_num(true, 0)
+				else
+					nil
 				end
 			end
 
